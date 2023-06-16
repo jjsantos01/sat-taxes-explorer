@@ -134,6 +134,7 @@ def open_exported_file():
         try:
             # Open the file using the default application
             subprocess.Popen(['open', exported_file_path])
+            dialog.destroy()  # Close the dialog window
         except OSError as e:
             messagebox.showerror("Error", f"Failed to open the file: {e}")
     else:
@@ -169,6 +170,7 @@ def select_folder():
                                   "Please select a valid export format!")
 
 def show_open_exported_file_dialog():
+    global dialog 
     dialog = tk.Toplevel()
     dialog.title("Export Successful")
     dialog.geometry("300x100")
