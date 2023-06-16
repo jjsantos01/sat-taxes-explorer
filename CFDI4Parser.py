@@ -8,8 +8,9 @@ import xml.etree.ElementTree as ET
 
 format_var = None  # Declare format_var as a global variable
 exported_file_path = ""  # Track the path of the exported file
+CLIENT_RFC = "SAOJ9110037P1"
 
-def get_data_cfdi(file_path):
+def get_data_cfdi(file_path, client_rfc=None):
     # Parse the XML file
     tree = ET.parse(file_path)
     root = tree.getroot()
@@ -71,7 +72,16 @@ def get_data_cfdi(file_path):
 
                 if impuesto == "002":
                     ivaTrasladado = importe
-
+    
+    tipo = ""
+    if client_rfc:
+        if client_rfc == receptorRFC:
+            tipo = "gasto"
+        elif client_rfc == emisorRFC:
+            tipo = "ingreso"
+        else:
+            return None
+    
     # Create a dictionary with the extracted data
     data = {
         "uuid": uuid,
@@ -87,7 +97,8 @@ def get_data_cfdi(file_path):
         "impuestoTotalRetenido": impuestoTotalRetenido,
         "isrRetenido": isrRetenido,
         "ivaRetenido": ivaRetenido,
-        "ivaTrasladado": ivaTrasladado
+        "ivaTrasladado": ivaTrasladado,
+        "tipo": tipo
     }
 
     return data
@@ -102,7 +113,7 @@ def get_cfdi_data_from_folder(folder_path):
         # Check if the file is an XML file
         if filename.endswith(".xml"):
             # Retrieve data from the XML file using get_data_cfdi function
-            data = get_data_cfdi(file_path)
+            data = get_data_cfdi(file_path, client_rfc=CLIENT_RFC)
 
             # Append the data to the data_list
             if data:
@@ -168,7 +179,8 @@ def export_data_to_sqlite(data_list, output_file):
                 impuestoTotalRetenido REAL,
                 isrRetenido REAL,
                 ivaRetenido REAL,
-                ivaTrasladado REAL
+                ivaTrasladado REAL,
+                tipo TEXT
             )
         ''')
 
@@ -184,14 +196,15 @@ def export_data_to_sqlite(data_list, output_file):
                     uuid, fecha, tipoComprobante, subtotal, total, emisorRFC,
                     emisorNombre, receptorRFC, receptorNombre,
                     impuestoTotalTraslado, impuestoTotalRetenido, isrRetenido,
-                    ivaRetenido, ivaTrasladado
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ivaRetenido, ivaTrasladado, tipo
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 uuid, data['fecha'], data['tipoComprobante'], data['subtotal'],
                 data['total'], data['emisorRFC'], data['emisorNombre'],
                 data['receptorRFC'], data['receptorNombre'],
                 data['impuestoTotalTraslado'], data['impuestoTotalRetenido'],
-                data['isrRetenido'], data['ivaRetenido'], data['ivaTrasladado']
+                data['isrRetenido'], data['ivaRetenido'], data['ivaTrasladado'],
+                data['tipo']
             ))
         else:
             print(f"Skipping duplicate UUID: {uuid}")
