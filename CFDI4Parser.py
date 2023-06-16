@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 format_var = None  # Declare format_var as a global variable
 exported_file_path = ""  # Track the path of the exported file
 CLIENT_RFC = "SAOJ9110037P1"
-DATABASE_FILE = "c://Users/jjsan/OneDrive/otros/SAT/facturas/facturas_2023.sqlite"
+DATABASE_FILE = "c://Users/jjsan/OneDrive/otros/SAT/facturas/2023/facturas_2023.sqlite"
 
 def get_data_cfdi(file_path, client_rfc=None):
     # Parse the XML file
@@ -313,4 +313,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    #get_data_cfdi()
