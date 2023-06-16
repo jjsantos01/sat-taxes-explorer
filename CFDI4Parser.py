@@ -1,6 +1,7 @@
 import csv
 import os
 import subprocess
+import sqlite3
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import xml.etree.ElementTree as ET
@@ -13,8 +14,18 @@ def get_data_cfdi(file_path):
     tree = ET.parse(file_path)
     root = tree.getroot()
 
+    version = root.attrib.get("Version", "")
+    if version < "4.0":
+        print("Skipping XML with version less than 4.0")
+        return None
+    
     # Get the namespace used in the XML
     namespace = "{http://www.sat.gob.mx/cfd/4}"
+
+    # Get the UUID
+    complemento = root.find(namespace + "Complemento")
+    timbre_fiscal_digital = complemento.find('{http://www.sat.gob.mx/TimbreFiscalDigital}TimbreFiscalDigital')
+    uuid = timbre_fiscal_digital.attrib['UUID']
 
     # Retrieve the data from the invoice
     fecha = root.attrib.get("Fecha", "")
@@ -63,6 +74,7 @@ def get_data_cfdi(file_path):
 
     # Create a dictionary with the extracted data
     data = {
+        "uuid": uuid,
         "fecha": fecha,
         "tipoComprobante": tipoComprobante,
         "subtotal": subtotal,
@@ -93,7 +105,8 @@ def get_cfdi_data_from_folder(folder_path):
             data = get_data_cfdi(file_path)
 
             # Append the data to the data_list
-            data_list.append(data)
+            if data:
+                data_list.append(data)
 
     return data_list
 
@@ -129,11 +142,72 @@ def export_data_to_excel(data_list, output_file):
 
     print("Data exported to Excel successfully!")
 
+def export_data_to_sqlite(data_list, output_file):
+    # Check if the SQLite database file exists
+    database_exists = os.path.isfile(output_file)
+
+    # Connect to the SQLite database
+    conn = sqlite3.connect(output_file)
+    c = conn.cursor()
+
+    # If the database doesn't exist, create the table
+    if not database_exists:
+        # Create the table with appropriate columns
+        c.execute('''
+            CREATE TABLE cfdi (
+                uuid TEXT PRIMARY KEY,
+                fecha TEXT,
+                tipoComprobante TEXT,
+                subtotal REAL,
+                total REAL,
+                emisorRFC TEXT,
+                emisorNombre TEXT,
+                receptorRFC TEXT,
+                receptorNombre TEXT,
+                impuestoTotalTraslado REAL,
+                impuestoTotalRetenido REAL,
+                isrRetenido REAL,
+                ivaRetenido REAL,
+                ivaTrasladado REAL
+            )
+        ''')
+
+    # Insert the data into the table if the UUID doesn't already exist
+    for data in data_list:
+        uuid = data["uuid"]
+        c.execute("SELECT uuid FROM cfdi WHERE uuid = ?", (uuid,))
+        existing_uuid = c.fetchone()
+
+        if existing_uuid is None:
+            c.execute('''
+                INSERT INTO cfdi (
+                    uuid, fecha, tipoComprobante, subtotal, total, emisorRFC,
+                    emisorNombre, receptorRFC, receptorNombre,
+                    impuestoTotalTraslado, impuestoTotalRetenido, isrRetenido,
+                    ivaRetenido, ivaTrasladado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                uuid, data['fecha'], data['tipoComprobante'], data['subtotal'],
+                data['total'], data['emisorRFC'], data['emisorNombre'],
+                data['receptorRFC'], data['receptorNombre'],
+                data['impuestoTotalTraslado'], data['impuestoTotalRetenido'],
+                data['isrRetenido'], data['ivaRetenido'], data['ivaTrasladado']
+            ))
+        else:
+            print(f"Skipping duplicate UUID: {uuid}")
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+    print("Data exported to SQLite successfully!")
+
 def open_exported_file():
     if exported_file_path:
         try:
             # Open the file using the default application
             subprocess.Popen(['open', exported_file_path])
+            dialog.destroy()  # Close the dialog window
         except OSError as e:
             messagebox.showerror("Error", f"Failed to open the file: {e}")
     else:
@@ -142,10 +216,12 @@ def open_exported_file():
 def select_folder():
     global exported_file_path  # Declare exported_file_path as a global variable
     folder_path = filedialog.askdirectory()
+    output_file = None
+
     if folder_path:
         format_selection = format_var.get()
+        data_list = get_cfdi_data_from_folder(folder_path)
         if format_selection == "CSV":
-            data_list = get_cfdi_data_from_folder(folder_path)
             output_file = filedialog.asksaveasfilename(defaultextension=".csv",
                                                         filetypes=[
                                                             ("CSV Files", "*.csv")]
@@ -155,7 +231,6 @@ def select_folder():
                 exported_file_path = output_file  # Track the path of the exported file
                 show_open_exported_file_dialog()
         elif format_selection == "Excel":
-            data_list = get_cfdi_data_from_folder(folder_path)
             output_file = filedialog.asksaveasfilename(defaultextension=".xlsx",
                                                         filetypes=[
                                                             ("Excel Files", "*.xlsx")]
@@ -164,11 +239,20 @@ def select_folder():
                 export_data_to_excel(data_list, output_file)
                 exported_file_path = output_file  # Track the path of the exported file
                 show_open_exported_file_dialog()
+        elif format_selection == "sqlite":
+            output_file = filedialog.asksaveasfilename(defaultextension=".sqlite",
+                                                        filetypes=[
+                                                        ("SQLite Files", "*.sqlite")]
+                                                        )
+            if output_file:
+                export_data_to_sqlite(data_list, output_file)
+
         else:
             messagebox.showerror("Invalid Format",
                                   "Please select a valid export format!")
-
+        
 def show_open_exported_file_dialog():
+    global dialog 
     dialog = tk.Toplevel()
     dialog.title("Export Successful")
     dialog.geometry("300x100")
@@ -204,8 +288,13 @@ def main():
                                   value="Excel")
     excel_radio.pack(anchor=tk.W)
 
+    sqlite_radio = tk.Radiobutton(window, text="sqlite", variable=format_var,
+                                  value="sqlite")
+    sqlite_radio.pack(anchor=tk.W)
+
     # Run the main window's event loop
     window.mainloop()
 
 if __name__ == "__main__":
     main()
+    #get_data_cfdi()
