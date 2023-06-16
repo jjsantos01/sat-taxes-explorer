@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 format_var = None  # Declare format_var as a global variable
 exported_file_path = ""  # Track the path of the exported file
 CLIENT_RFC = "SAOJ9110037P1"
+DATABASE_FILE = "c://Users/jjsan/OneDrive/otros/SAT/facturas/facturas_2023.sqlite"
 
 def get_data_cfdi(file_path, client_rfc=None):
     # Parse the XML file
@@ -216,7 +217,11 @@ def export_data_to_sqlite(data_list, output_file):
     print("Data exported to SQLite successfully!")
 
 def open_exported_file():
-    if exported_file_path:
+    if exported_file_path.endswith(".sqlite"):
+        messagebox.showinfo("Sqlite File",
+                             "Open the SQLite file using a SQLite browser.")
+        dialog.destroy() 
+    elif exported_file_path:
         try:
             # Open the file using the default application
             subprocess.Popen(['open', exported_file_path])
@@ -253,12 +258,10 @@ def select_folder():
                 exported_file_path = output_file  # Track the path of the exported file
                 show_open_exported_file_dialog()
         elif format_selection == "sqlite":
-            output_file = filedialog.asksaveasfilename(defaultextension=".sqlite",
-                                                        filetypes=[
-                                                        ("SQLite Files", "*.sqlite")]
-                                                        )
-            if output_file:
-                export_data_to_sqlite(data_list, output_file)
+            exported_file_path = DATABASE_FILE
+            if DATABASE_FILE:
+                export_data_to_sqlite(data_list, DATABASE_FILE)
+                show_open_exported_file_dialog()
 
         else:
             messagebox.showerror("Invalid Format",
