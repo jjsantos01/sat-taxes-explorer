@@ -1,1 +1,1 @@
-python windows_interface.py
+python app/windows_interface.py
