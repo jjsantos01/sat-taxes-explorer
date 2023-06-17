@@ -80,7 +80,7 @@ def load_invoices():
             data = get_data_cfdi(file_content, CLIENT_RFC)
             if data:
                 data_list.append(data)
-        
+
         export_data_to_sqlite(data_list, DATABASE_FILE)
 
 page_names_to_funcs = {

@@ -2,11 +2,14 @@ import csv
 import os
 import sqlite3
 import xml.etree.ElementTree as ET
+from dotenv import load_dotenv
+
+load_dotenv()
 
 format_var = None  # Declare format_var as a global variable
 exported_file_path = ""  # Track the path of the exported file
-CLIENT_RFC = "SAOJ9110037P1"
-DATABASE_FILE = "../../2023/facturas_2023.sqlite"
+CLIENT_RFC = os.getenv("CLIENT_RFC")
+DATABASE_FILE = os.getenv("DATABASE_FILE")
 
 def get_data_cfdi(file_path, client_rfc=None):
     # Parse the XML file
@@ -17,7 +20,7 @@ def get_data_cfdi(file_path, client_rfc=None):
     if version < "4.0":
         print("Skipping XML with version less than 4.0")
         return None
-    
+
     # Get the namespace used in the XML
     namespace = "{http://www.sat.gob.mx/cfd/4}"
 
@@ -70,7 +73,7 @@ def get_data_cfdi(file_path, client_rfc=None):
 
                 if impuesto == "002":
                     ivaTrasladado = importe
-    
+
     tipo = ""
     if client_rfc:
         if client_rfc == receptorRFC:
@@ -79,7 +82,7 @@ def get_data_cfdi(file_path, client_rfc=None):
             tipo = "ingreso"
         else:
             return None
-    
+
     # Create a dictionary with the extracted data
     data = {
         "uuid": uuid,
