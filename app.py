@@ -1,11 +1,12 @@
+from io import StringIO
 import sqlite3
 import streamlit as st
 import pandas as pd
-from CFDI4Parser import get_data_cfdi, export_data_to_sqlite
-from CFDI4Parser import CLIENT_RFC, DATABASE_FILE
-from io import StringIO
+from CFDI4Parser import get_data_cfdi, export_data_to_sqlite, CLIENT_RFC, DATABASE_FILE
+from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text,\
+      save_data_to_sqlite, DATABASE_FILE_DECLARACIONES
 
-def fetch_data_from_sqlite(database_file):
+def fetch_cfdi_from_sqlite(database_file):
     conn = sqlite3.connect(database_file)
     c = conn.cursor()
 
@@ -26,7 +27,7 @@ def show_invoices():
     st.title("Facturas")
 
     # Connect to the SQLite database and fetch the data
-    data, columns = fetch_data_from_sqlite(DATABASE_FILE)
+    data, columns = fetch_cfdi_from_sqlite(DATABASE_FILE)
     df = pd.DataFrame(data, columns=columns)
 
     # Add widgets for filtering the data
@@ -83,9 +84,60 @@ def load_invoices():
 
         export_data_to_sqlite(data_list, DATABASE_FILE)
 
+def fetch_declaraciones_from_sqlite(database_file):
+    conn = sqlite3.connect(database_file)
+    c = conn.cursor()
+    c.execute("SELECT * FROM declaraciones_mensuales ORDER BY fecha_presentacion ASC")
+    rows = c.fetchall()
+    column_names = [description[0] for description in c.description]
+    conn.close()
+    return rows, column_names
+
+def show_declaraciones():
+    # Set the title and page layout
+    st.title("Declaraciones Mensuales")
+
+    # Connect to the SQLite database and fetch the data
+    data, columns = fetch_declaraciones_from_sqlite(DATABASE_FILE_DECLARACIONES)
+    df = pd.DataFrame(data, columns=columns)
+
+    # Add widgets for filtering the data
+    st.sidebar.title("Data Filters")
+
+    # Filter by year
+    years = sorted(df['ejercicio'].unique(), reverse=True)
+    selected_year = st.sidebar.selectbox("Ejercicio", years)
+    
+    # Apply filters to the data
+    filtered_df = df[df['ejercicio'].eq(selected_year)]
+
+    # Display the filtered data table
+    st.dataframe(filtered_df, width=1200)
+
+def load_declaraciones():
+    uploaded_files = st.file_uploader("Subir declaraciones", type="pdf",
+                                       accept_multiple_files=True)
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            extracted_text = extract_text_from_pdf(uploaded_file)
+            extracted_data = extract_data_from_text(extracted_text)
+            print(extracted_data)
+            if extracted_data:
+                saved = save_data_to_sqlite(extracted_data, DATABASE_FILE_DECLARACIONES)
+                if saved:
+                    st.success(f"Datos de {uploaded_file.name} guardados exitosamente")
+                else:
+                    st.info(f"{uploaded_file.name} ya estaba guardado")
+            else:
+                st.warning(f"No se pudieron extraer datos de {uploaded_file.name}") 
+
+
 page_names_to_funcs = {
     "Cargar facturas": load_invoices,
     "Ver facturas": show_invoices,
+    "Cargar declaraciones": load_declaraciones,
+    "Ver declaraciones": show_declaraciones,
 }
+
 page_name = st.sidebar.selectbox("Escoge tarea", page_names_to_funcs.keys())
 page_names_to_funcs[page_name]()
