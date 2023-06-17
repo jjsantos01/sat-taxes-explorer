@@ -1,10 +1,9 @@
 import sqlite3
 import streamlit as st
 import pandas as pd
-from CFDI4Parser import get_data_cfdi, CLIENT_RFC
+from CFDI4Parser import get_data_cfdi, export_data_to_sqlite
+from CFDI4Parser import CLIENT_RFC, DATABASE_FILE
 from io import StringIO
-
-DATABASE_FILE = "../../2023/facturas_2023.sqlite"
 
 def fetch_data_from_sqlite(database_file):
     conn = sqlite3.connect(database_file)
@@ -72,14 +71,21 @@ def show_invoices():
         st.write(f"""IVA trasladado en compras: {iva_trasladado:.2f}""")
 
 def load_invoices():
-    uploaded_files = st.file_uploader("Subir facturas", type="xml", accept_multiple_files=True)
-    if uploaded_files is not None:
+    uploaded_files = st.file_uploader("Subir facturas", type="xml",
+                                       accept_multiple_files=True)
+    if uploaded_files:
+        data_list = []
         for uploaded_file in uploaded_files:
-            file_details = get_data_cfdi(StringIO(uploaded_file.getvalue().decode("utf-8")))
+            file_content = StringIO(uploaded_file.getvalue().decode("utf-8"))
+            data = get_data_cfdi(file_content, CLIENT_RFC)
+            if data:
+                data_list.append(data)
+        
+        export_data_to_sqlite(data_list, DATABASE_FILE)
 
 page_names_to_funcs = {
     "Cargar facturas": load_invoices,
     "Ver facturas": show_invoices,
 }
-demo_name = st.sidebar.selectbox("Escoge tarea", page_names_to_funcs.keys())
-page_names_to_funcs[demo_name]()
+page_name = st.sidebar.selectbox("Escoge tarea", page_names_to_funcs.keys())
+page_names_to_funcs[page_name]()
