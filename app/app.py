@@ -83,7 +83,11 @@ def load_invoices():
             if data:
                 data_list.append(data)
 
-        export_data_to_sqlite(data_list, DATABASE_FILE)
+        exported = export_data_to_sqlite(data_list, DATABASE_FILE)
+        if exported:
+            st.success(f"{exported} registros guardados exitosamente")
+        else:
+            st.info("No se guardaron registros nuevos")
 
 def fetch_declaraciones_from_sqlite(database_file):
     conn = sqlite3.connect(database_file)
