@@ -216,6 +216,7 @@ def export_data_to_sqlite(data_list, output_file):
     conn.close()
 
     print(f"{exported_data} records exported successfully!")
+    return exported_data
 
 def table_exists(conn, table_name):
     c = conn.cursor()
