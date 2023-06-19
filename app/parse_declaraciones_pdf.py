@@ -144,7 +144,8 @@ def save_data_to_sqlite(data, output_file):
 
 def table_exists(conn, table_name):
     c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+               (table_name,))
     return c.fetchone() is not None
 
 # pdf_file_path = '../../2022/declaracion_mensual_202202.pdf'

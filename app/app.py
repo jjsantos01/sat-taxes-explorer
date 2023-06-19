@@ -7,6 +7,11 @@ from parse_cfdi4_facturas import get_data_cfdi, export_data_to_sqlite, CLIENT_RF
 from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text,\
       save_data_to_sqlite
 
+MONTHS_DICT = {"01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
+               "05": "Mayo", "06": "Junio", "07": "Julio", "08": "Agosto",
+               "09": "Septiembre", "10": "Octubre", "11": "Noviembre",
+               "12": "Diciembre"}
+
 def fetch_cfdi_from_sqlite(database_file):
     conn = sqlite3.connect(database_file)
     c = conn.cursor()
@@ -14,6 +19,27 @@ def fetch_cfdi_from_sqlite(database_file):
     # Fetch all rows from the table
     c.execute("SELECT * FROM cfdi")
     rows = c.fetchall()
+
+    # Get the column names
+    column_names = [description[0] for description in c.description]
+
+    # Close the connection
+    conn.close()
+
+    return rows, column_names
+
+def fetch_previous_declaration(database_file, ejercicio, periodo):
+    conn = sqlite3.connect(database_file)
+    c = conn.cursor()
+
+    # Fetch all rows from the table
+    c.execute("""
+        SELECT ejercicio, periodo,
+          pagos_provisionales_periodos_anteriores,
+          isr_retenido_periodos_anteriores
+        FROM declaraciones_mensuales
+        WHERE ejercicio = ? AND periodo = ?""", (ejercicio, periodo))
+    rows = c.fetchone()
 
     # Get the column names
     column_names = [description[0] for description in c.description]
@@ -60,8 +86,17 @@ def show_invoices():
     # Display the filtered data table
     st.dataframe(filtered_df, width=1200)
 
-    col1, col2 = st.columns(2)
 
+    if st.checkbox("Mostrar datos de declaracion anterior"):
+        previous_declaration = fetch_previous_declaration(
+            DATABASE_FILE,
+            int(selected_year),
+            MONTHS_DICT[f"{int(selected_month)-1:02d}"]
+            )
+        for k, v in zip(previous_declaration[1], previous_declaration[0]):
+            st.write(f"{k}: {v}")
+    
+    col1, col2 = st.columns(2)
     with col1:
         st.header("ISR")
         st.write(f"""Ingresos del periodo: {ingresos_totales:.2f}""")
