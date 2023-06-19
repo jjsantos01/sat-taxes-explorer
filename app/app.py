@@ -2,9 +2,10 @@ from io import StringIO
 import sqlite3
 import streamlit as st
 import pandas as pd
-from parse_cfdi4_facturas import get_data_cfdi, export_data_to_sqlite, CLIENT_RFC, DATABASE_FILE
+from parse_cfdi4_facturas import get_data_cfdi, export_data_to_sqlite, CLIENT_RFC,\
+      DATABASE_FILE
 from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text,\
-      save_data_to_sqlite, DATABASE_FILE_DECLARACIONES
+      save_data_to_sqlite
 
 def fetch_cfdi_from_sqlite(database_file):
     conn = sqlite3.connect(database_file)
@@ -98,7 +99,7 @@ def show_declaraciones():
     st.title("Declaraciones Mensuales")
 
     # Connect to the SQLite database and fetch the data
-    data, columns = fetch_declaraciones_from_sqlite(DATABASE_FILE_DECLARACIONES)
+    data, columns = fetch_declaraciones_from_sqlite(DATABASE_FILE)
     df = pd.DataFrame(data, columns=columns)
 
     # Add widgets for filtering the data
@@ -123,7 +124,7 @@ def load_declaraciones():
             extracted_data = extract_data_from_text(extracted_text)
             print(extracted_data)
             if extracted_data:
-                saved = save_data_to_sqlite(extracted_data, DATABASE_FILE_DECLARACIONES)
+                saved = save_data_to_sqlite(extracted_data, DATABASE_FILE)
                 if saved:
                     st.success(f"Datos de {uploaded_file.name} guardados exitosamente")
                 else:

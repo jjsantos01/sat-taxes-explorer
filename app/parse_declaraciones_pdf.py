@@ -6,7 +6,7 @@ import sqlite3
 from dotenv import load_dotenv
 
 load_dotenv()
-DATABASE_FILE_DECLARACIONES = os.getenv("DATABASE_FILE_DECLARACIONES")
+DATABASE_FILE = os.getenv("DATABASE_FILE")
 
 VAR_REGEX_DICT = {
     "RFC": r"RFC\s+(\w+)",
@@ -75,7 +75,7 @@ def save_data_to_sqlite(data, output_file):
     saved = False
 
     # If the database doesn't exist, create the table
-    if not database_exists:
+    if not database_exists or not table_exists(conn, 'declaraciones_mensuales'):
         # Create the table with appropriate columns
         c.execute('''
             CREATE TABLE declaraciones_mensuales (
@@ -141,6 +141,11 @@ def save_data_to_sqlite(data, output_file):
     conn.commit()
     conn.close()
     return saved
+
+def table_exists(conn, table_name):
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+    return c.fetchone() is not None
 
 # pdf_file_path = '../../2022/declaracion_mensual_202202.pdf'
 # extracted_text = extract_text_from_pdf(pdf_file_path)
