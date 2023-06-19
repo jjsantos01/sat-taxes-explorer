@@ -163,7 +163,7 @@ def export_data_to_sqlite(data_list, output_file):
     c = conn.cursor()
 
     # If the database doesn't exist, create the table
-    if not database_exists:
+    if not database_exists or not table_exists(conn, 'cfdi'):
         # Create the table with appropriate columns
         c.execute('''
             CREATE TABLE cfdi (
@@ -216,3 +216,8 @@ def export_data_to_sqlite(data_list, output_file):
     conn.close()
 
     print(f"{exported_data} records exported successfully!")
+
+def table_exists(conn, table_name):
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+    return c.fetchone() is not None
