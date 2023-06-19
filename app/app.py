@@ -34,9 +34,7 @@ def fetch_previous_declaration(database_file, ejercicio, periodo):
 
     # Fetch all rows from the table
     c.execute("""
-        SELECT ejercicio, periodo,
-          pagos_provisionales_periodos_anteriores,
-          isr_retenido_periodos_anteriores
+        SELECT periodo, pagos_provisionales_periodos_anteriores
         FROM declaraciones_mensuales
         WHERE ejercicio = ? AND periodo = ?""", (ejercicio, periodo))
     rows = c.fetchone()
