@@ -10,6 +10,10 @@ format_var = None  # Declare format_var as a global variable
 exported_file_path = ""  # Track the path of the exported file
 CLIENT_RFC = os.getenv("CLIENT_RFC")
 DATABASE_FILE = os.getenv("DATABASE_FILE")
+folder_path = os.path.dirname(DATABASE_FILE)
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path, exist_ok=True)
+
 
 def get_data_cfdi(file_path, client_rfc=None):
     # Parse the XML file
