@@ -15,3 +15,8 @@ CLIENT_RFC=XXXXXXXXXXXXX
 DATABASE_FILE="app/data/contabilidad_sat.sqlite"
 ```
 
+Para ejecutar, correr el comando:
+```bash
+streamlit run app/app.py
+```
+
