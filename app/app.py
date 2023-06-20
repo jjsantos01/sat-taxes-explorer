@@ -63,7 +63,7 @@ def show_invoices():
     selected_year = st.sidebar.selectbox("Select Year", years)
 
     # Filter by month
-    months = sorted(df['fecha'].str[5:7].unique())
+    months = sorted(df['fecha'].str[5:7].unique(), reverse=True)
     selected_month = st.sidebar.selectbox("Select Month", months)
 
     # Filter by tipo
