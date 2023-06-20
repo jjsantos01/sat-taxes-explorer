@@ -2,7 +2,7 @@ from io import StringIO
 import sqlite3
 import streamlit as st
 import pandas as pd
-from parse_cfdi4_facturas import get_data_cfdi, export_data_to_sqlite, CLIENT_RFC,\
+from parse_cfdi_facturas import get_data_cfdi, export_data_to_sqlite, CLIENT_RFC,\
       DATABASE_FILE
 from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text,\
       save_data_to_sqlite
@@ -91,8 +91,11 @@ def show_invoices():
             int(selected_year),
             MONTHS_DICT[f"{int(selected_month)-1:02d}"]
             )
-        for k, v in zip(previous_declaration[1], previous_declaration[0]):
-            st.write(f"{k}: {v}")
+        if previous_declaration[0]:
+            for k, v in zip(previous_declaration[1], previous_declaration[0]):
+                st.write(f"{k}: {v}")
+        else:
+            st.info("No hay datos de declaracion anterior")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -159,7 +162,6 @@ def load_declaraciones():
         for uploaded_file in uploaded_files:
             extracted_text = extract_text_from_pdf(uploaded_file)
             extracted_data = extract_data_from_text(extracted_text)
-            print(extracted_data)
             if extracted_data:
                 saved = save_data_to_sqlite(extracted_data, DATABASE_FILE)
                 if saved:

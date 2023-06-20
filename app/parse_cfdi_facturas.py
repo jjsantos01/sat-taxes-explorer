@@ -16,13 +16,21 @@ if not os.path.exists(folder_path):
 
 
 def get_data_cfdi(file_path, client_rfc=None):
-    # Parse the XML file
     tree = ET.parse(file_path)
     root = tree.getroot()
-
     version = root.attrib.get("Version", "")
-    if version < "4.0":
-        print("Skipping XML with version less than 4.0")
+    if version[0] == "4":
+        return get_data_cfdi_4_0(root, client_rfc)
+    elif version[0] == "3":
+        return get_data_cfdi_3_3(root, client_rfc)
+    else:
+        return None
+
+def get_data_cfdi_4_0(root, client_rfc=None):
+    # Parse the XML file
+    version = root.attrib.get("Version", "")
+    if version[0] != "4":
+        print("Skipping XML with version different than 4")
         return None
 
     # Get the namespace used in the XML
@@ -103,7 +111,97 @@ def get_data_cfdi(file_path, client_rfc=None):
         "isrRetenido": isrRetenido,
         "ivaRetenido": ivaRetenido,
         "ivaTrasladado": ivaTrasladado,
-        "tipo": tipo
+        "tipo": tipo,
+        "version": version
+    }
+
+    return data
+
+def get_data_cfdi_3_3(root, client_rfc=None):
+    version = root.attrib.get("Version", "")
+    if version[0] != "3":
+        print("Skipping XML with version different than 3")
+        return None
+
+    # Get the namespace used in the XML
+    namespace = "{http://www.sat.gob.mx/cfd/3}"
+
+    # Get the UUID
+    timbre_fiscal_digital = root.find(".//tfd:TimbreFiscalDigital", {"tfd": "http://www.sat.gob.mx/TimbreFiscalDigital"})
+    uuid = timbre_fiscal_digital.attrib['UUID']
+
+    # Retrieve the data from the invoice
+    fecha = root.attrib.get("Fecha", "")
+    tipoComprobante = root.attrib.get("TipoDeComprobante", "")
+    subtotal = float(root.attrib.get("SubTotal", 0))
+    total = float(root.attrib.get("Total", 0))
+
+    emisor = root.find(namespace + "Emisor")
+    emisorRFC = emisor.attrib.get("Rfc", "")
+    emisorNombre = emisor.attrib.get("Nombre", "")
+
+    receptor = root.find(namespace + "Receptor")
+    receptorRFC = receptor.attrib.get("Rfc", "")
+    receptorNombre = receptor.attrib.get("Nombre", "")
+
+    impuestoTotalTraslado = 0
+    impuestoTotalRetenido = 0
+    isrRetenido = 0
+    ivaRetenido = 0
+    ivaTrasladado = 0
+
+    impuestos = root.find(namespace + "Impuestos")
+    if impuestos is not None:
+        impuestoTotalTraslado = float(impuestos.attrib.get("TotalImpuestosTrasladados", 0))
+        impuestoTotalRetenido = float(impuestos.attrib.get("TotalImpuestosRetenidos", 0))
+
+        retenciones = impuestos.find(namespace + "Retenciones")
+        if retenciones is not None:
+            for retencion in retenciones:
+                impuesto = retencion.attrib.get("Impuesto", "")
+                importe = float(retencion.attrib.get("Importe", 0))
+
+                if impuesto == "001":
+                    isrRetenido = importe
+                elif impuesto == "002":
+                    ivaRetenido = importe
+
+        traslados = impuestos.find(namespace + "Traslados")
+        if traslados is not None:
+            for traslado in traslados:
+                impuesto = traslado.attrib.get("Impuesto", "")
+                importe = float(traslado.attrib.get("Importe", 0))
+
+                if impuesto == "002":
+                    ivaTrasladado = importe
+
+    tipo = ""
+    if client_rfc:
+        if client_rfc == receptorRFC:
+            tipo = "gasto"
+        elif client_rfc == emisorRFC:
+            tipo = "ingreso"
+        else:
+            return None
+
+    # Create a dictionary with the extracted data
+    data = {
+        "uuid": uuid,
+        "fecha": fecha,
+        "tipoComprobante": tipoComprobante,
+        "subtotal": subtotal,
+        "total": total,
+        "emisorRFC": emisorRFC,
+        "emisorNombre": emisorNombre,
+        "receptorRFC": receptorRFC,
+        "receptorNombre": receptorNombre,
+        "impuestoTotalTraslado": impuestoTotalTraslado,
+        "impuestoTotalRetenido": impuestoTotalRetenido,
+        "isrRetenido": isrRetenido,
+        "ivaRetenido": ivaRetenido,
+        "ivaTrasladado": ivaTrasladado,
+        "tipo": tipo,
+        "version": version
     }
 
     return data
@@ -118,7 +216,7 @@ def get_cfdi_data_from_folder(folder_path):
         # Check if the file is an XML file
         if filename.endswith(".xml"):
             # Retrieve data from the XML file using get_data_cfdi function
-            data = get_data_cfdi(file_path, client_rfc=CLIENT_RFC)
+            data = get_data_cfdi_4_0(file_path, client_rfc=CLIENT_RFC)
 
             # Append the data to the data_list
             if data:
@@ -185,7 +283,8 @@ def export_data_to_sqlite(data_list, output_file):
                 isrRetenido REAL,
                 ivaRetenido REAL,
                 ivaTrasladado REAL,
-                tipo TEXT
+                tipo TEXT,
+                version TEXT
             )
         ''')
     exported_data = 0
@@ -201,15 +300,15 @@ def export_data_to_sqlite(data_list, output_file):
                     uuid, fecha, tipoComprobante, subtotal, total, emisorRFC,
                     emisorNombre, receptorRFC, receptorNombre,
                     impuestoTotalTraslado, impuestoTotalRetenido, isrRetenido,
-                    ivaRetenido, ivaTrasladado, tipo
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ivaRetenido, ivaTrasladado, tipo, version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 uuid, data['fecha'], data['tipoComprobante'], data['subtotal'],
                 data['total'], data['emisorRFC'], data['emisorNombre'],
                 data['receptorRFC'], data['receptorNombre'],
                 data['impuestoTotalTraslado'], data['impuestoTotalRetenido'],
                 data['isrRetenido'], data['ivaRetenido'], data['ivaTrasladado'],
-                data['tipo']
+                data['tipo'], data['version']
             ))
             exported_data += 1
         else:
