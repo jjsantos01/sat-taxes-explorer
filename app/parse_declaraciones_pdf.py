@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 DATABASE_FILE = os.getenv("DATABASE_FILE")
+folder_path = os.path.dirname(DATABASE_FILE)
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path, exist_ok=True)
 
 VAR_REGEX_DICT = {
     "RFC": r"RFC\s+(\w+)",
