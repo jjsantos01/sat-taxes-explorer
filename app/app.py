@@ -34,7 +34,9 @@ def fetch_previous_declaration(database_file, ejercicio, periodo):
 
     # Fetch all rows from the table
     c.execute("""
-        SELECT periodo, pagos_provisionales_periodos_anteriores
+        SELECT periodo,
+               pagos_provisionales_periodos_anteriores,
+               impuesto_valor_agregado_favor
         FROM declaraciones_mensuales
         WHERE ejercicio = ? AND periodo = ?""", (ejercicio, periodo))
     rows = c.fetchone()
@@ -85,17 +87,6 @@ def show_invoices():
     st.dataframe(filtered_df, width=1200)
 
 
-    if st.checkbox("Mostrar datos de declaracion anterior"):
-        previous_declaration = fetch_previous_declaration(
-            DATABASE_FILE,
-            int(selected_year),
-            MONTHS_DICT[f"{int(selected_month)-1:02d}"]
-            )
-        if previous_declaration[0]:
-            for k, v in zip(previous_declaration[1], previous_declaration[0]):
-                st.write(f"{k}: {v}")
-        else:
-            st.info("No hay datos de declaracion anterior")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -107,6 +98,19 @@ def show_invoices():
         st.header("IVA")
         st.write(f"""IVA retenido: {iva_retenido:.2f}""")
         st.write(f"""IVA trasladado en compras: {iva_trasladado:.2f}""")
+
+    st.divider()
+    st.header("Datos declaracion anterior")
+    previous_declaration = fetch_previous_declaration(
+        DATABASE_FILE,
+        int(selected_year),
+        MONTHS_DICT[f"{int(selected_month)-1:02d}"]
+        )
+    if previous_declaration[0]:
+        for k, v in zip(previous_declaration[1], previous_declaration[0]):
+            st.write(f"{k}: {v}")
+    else:
+        st.info("No hay datos de declaracion anterior")
 
 def load_invoices():
     uploaded_files = st.file_uploader("Subir facturas", type="xml",
