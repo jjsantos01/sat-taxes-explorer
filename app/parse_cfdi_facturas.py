@@ -1,4 +1,3 @@
-import csv
 import os
 import xml.etree.ElementTree as ET
 from dotenv import load_dotenv
@@ -237,36 +236,3 @@ def get_cfdi_data_from_folder(folder_path):
                 data_list.append(data)
 
     return data_list
-
-def export_data_to_csv(data_list, output_file):
-    # Define the field names for the CSV file
-    field_names = data_list[0].keys()
-
-    # Write the data to the CSV file
-    with open(output_file, "w", newline="") as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=field_names)
-        writer.writeheader()
-        writer.writerows(data_list)
-
-    print("Data exported to CSV successfully!")
-
-def export_data_to_excel(data_list, output_file):
-    from openpyxl import Workbook
-    # Create a new workbook and select the active sheet
-    workbook = Workbook()
-    sheet = workbook.active
-
-    # Define the headers for the columns
-    headers = list(data_list[0].keys())
-    # Write the headers to the worksheet
-    sheet.append(headers)
-
-    # Write the data to the worksheet
-    for data in data_list:
-        sheet.append(list(data.values()))
-
-    # Save the workbook to the output file
-    workbook.save(output_file)
-
-    print("Data exported to Excel successfully!")
-
