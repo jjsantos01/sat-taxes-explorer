@@ -47,7 +47,7 @@ def fetch_declaraciones_from_sqlite(database_file):
     conn.close()
     return rows, column_names
 
-def delete_selected_rows_from_db(selected_uuids, output_file):
+def delete_cfdi_from_db(selected_uuids, output_file):
     # Connect to the SQLite database
     conn = sqlite3.connect(output_file)
     cursor = conn.cursor()
@@ -69,7 +69,7 @@ def delete_selected_rows_from_db(selected_uuids, output_file):
         # Close the connection
         conn.close()
 
-def export_data_to_sqlite(data_list, output_file):
+def save_cfdi_to_sqlite(data_list, output_file):
     # Check if the SQLite database file exists
     database_exists = os.path.isfile(output_file)
 
@@ -210,6 +210,29 @@ def save_declaracion_to_sqlite(data, output_file):
     conn.commit()
     conn.close()
     return saved
+
+def delete_declaraciones_from_db(selected_uuids, output_file):
+    # Connect to the SQLite database
+    conn = sqlite3.connect(output_file)
+    cursor = conn.cursor()
+
+    try:
+        # Loop through the selected IDs and delete corresponding rows
+        for selected_id in selected_uuids:
+            cursor.execute('DELETE FROM declaraciones_mensuales WHERE id=?',
+                            (selected_id,))
+        
+        # Commit the changes
+        conn.commit()
+        return True
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+    finally:
+        # Close the connection
+        conn.close()
 
 def table_exists(conn, table_name):
     c = conn.cursor()

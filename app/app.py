@@ -4,9 +4,10 @@ import streamlit as st
 import pandas as pd
 from parse_cfdi_facturas import get_data_cfdi,\
 CLIENT_RFC,DATABASE_FILE
-from data_ops import delete_selected_rows_from_db, fetch_cfdi_from_sqlite,\
+from data_ops import delete_cfdi_from_db, fetch_cfdi_from_sqlite,\
 fetch_previous_declaration, fetch_declaraciones_from_sqlite,\
-export_data_to_sqlite, save_declaracion_to_sqlite
+save_cfdi_to_sqlite, save_declaracion_to_sqlite,\
+delete_declaraciones_from_db
 from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text
 
 MONTHS_DICT = {"01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -24,6 +25,7 @@ def show_invoices():
     # Connect to the SQLite database and fetch the data
     data, columns = fetch_cfdi_from_sqlite(DATABASE_FILE)
     df = pd.DataFrame(data, columns=columns)
+    df["Borrar"] = False
 
     # Add widgets for filtering the data
     st.sidebar.title("Data Filters")
@@ -51,8 +53,6 @@ def show_invoices():
     iva_retenido = filtered_df.query('tipo == "ingreso"')['ivaRetenido'].sum()
     iva_trasladado = filtered_df.query('tipo == "gasto"')['ivaTrasladado'].sum()
 
-    filtered_df["Borrar"] = False
-
     if "key" not in st.session_state:
         st.session_state["key"] = random.randint(0, 100000)
     
@@ -72,7 +72,7 @@ def show_invoices():
             st.session_state["uuids_borrar"] = []
 
         def delete_invoice():
-            delete_selected_rows_from_db(st.session_state['uuids_borrar'],
+            delete_cfdi_from_db(st.session_state['uuids_borrar'],
                                           DATABASE_FILE)
             st.success(f"Facturas {st.session_state['uuids_borrar']}"
                        " borradas exitosamente")
@@ -117,7 +117,7 @@ def load_invoices():
             if data:
                 data_list.append(data)
 
-        exported = export_data_to_sqlite(data_list, DATABASE_FILE)
+        exported = save_cfdi_to_sqlite(data_list, DATABASE_FILE)
         if exported:
             st.success(f"{exported} registros guardados exitosamente")
         else:
@@ -133,6 +133,7 @@ def show_declaraciones():
     # Connect to the SQLite database and fetch the data
     data, columns = fetch_declaraciones_from_sqlite(DATABASE_FILE)
     df = pd.DataFrame(data, columns=columns)
+    df["Borrar"] = False
 
     # Add widgets for filtering the data
     st.sidebar.title("Data Filters")
@@ -145,8 +146,34 @@ def show_declaraciones():
     filtered_df = df[df['ejercicio'].eq(selected_year)]
 
     # Display the filtered data table
-    st.dataframe(filtered_df, width=1200)
+    if "key" not in st.session_state:
+        st.session_state["key"] = random.randint(0, 100000)
+    
+    edited_df = st.data_editor(filtered_df, key=st.session_state["key"])
+    st.session_state['ids_borrar'] = edited_df.loc[edited_df["Borrar"],
+                                                         "id"].tolist()
+    if st.session_state['ids_borrar']:
+        st.markdown(
+                f"""
+                    **¿Desea borrar las siguientes declaraciones?**:
+                    {st.session_state['ids_borrar']}
+                """
+        )
+        def cancel_delete():
+            st.session_state["key"] = str(random.randint(0, 100000))
+            st.session_state["ids_borrar"] = []
 
+        def delete_declaraciones():
+            delete_declaraciones_from_db(st.session_state['ids_borrar'],
+                                          DATABASE_FILE)
+            st.success(f"Declaraciones {st.session_state['ids_borrar']}"
+                       " borradas exitosamente")
+            st.session_state["key"] = str(random.randint(0, 100000))
+            st.session_state["ids_borrar"] = []
+
+        st.button("Borrar facturas", on_click=delete_declaraciones)       
+        st.button("Cancelar", on_click=cancel_delete)
+  
 def load_declaraciones():
     uploaded_files = st.file_uploader("Subir declaraciones", type="pdf",
                                        accept_multiple_files=True)
