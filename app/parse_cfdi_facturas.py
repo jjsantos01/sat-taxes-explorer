@@ -95,6 +95,19 @@ def get_data_cfdi_4_0(root, client_rfc=None):
         else:
             return None
 
+    currency = root.attrib.get("Moneda", "")
+    exchange_rate = float(root.attrib.get("TipoCambio", "1"))
+
+    # Convert amounts to MXN if currency is foreign
+    if currency != "MXN":
+        subtotal = round(subtotal * exchange_rate, 2)
+        total = round(total * exchange_rate, 2)
+        impuestoTotalTraslado = round(impuestoTotalTraslado * exchange_rate, 2)
+        impuestoTotalRetenido = round(impuestoTotalRetenido * exchange_rate, 2)
+        isrRetenido = round(isrRetenido * exchange_rate, 2)
+        ivaRetenido = round(ivaRetenido * exchange_rate, 2)
+        ivaTrasladado = round(ivaTrasladado * exchange_rate, 2)
+
     # Create a dictionary with the extracted data
     data = {
         "uuid": uuid,
