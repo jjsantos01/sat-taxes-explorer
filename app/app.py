@@ -1,9 +1,11 @@
 from io import StringIO
 import sqlite3
+import random
 import streamlit as st
 import pandas as pd
-from parse_cfdi_facturas import get_data_cfdi, export_data_to_sqlite, CLIENT_RFC,\
-      DATABASE_FILE
+from parse_cfdi_facturas import get_data_cfdi, export_data_to_sqlite,\
+CLIENT_RFC,DATABASE_FILE
+from data_ops import delete_selected_rows_from_db
 from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text,\
       save_data_to_sqlite
 
@@ -83,9 +85,36 @@ def show_invoices():
     iva_retenido = filtered_df.query('tipo == "ingreso"')['ivaRetenido'].sum()
     iva_trasladado = filtered_df.query('tipo == "gasto"')['ivaTrasladado'].sum()
 
-    # Display the filtered data table
-    st.dataframe(filtered_df, width=1200)
+    filtered_df["Borrar"] = False
 
+    if "key" not in st.session_state:
+        st.session_state["key"] = random.randint(0, 100000)
+    
+    edited_df = st.data_editor(filtered_df, key=st.session_state["key"])
+    st.session_state['uuids_borrar'] = edited_df.loc[edited_df["Borrar"],
+                                                      "uuid"].tolist()
+    
+    if st.session_state['uuids_borrar']:
+        st.markdown(
+                f"""
+                    **¿Desea borrar las siguientes facturas?**:
+                    {st.session_state['uuids_borrar']}
+                """
+        )
+        def cancel_delete():
+            st.session_state["key"] = str(random.randint(0, 100000))
+            st.session_state["uuids_borrar"] = []
+
+        def delete_invoice():
+            delete_selected_rows_from_db(st.session_state['uuids_borrar'],
+                                          DATABASE_FILE)
+            st.success(f"Facturas {st.session_state['uuids_borrar']}"
+                       " borradas exitosamente")
+            st.session_state["key"] = str(random.randint(0, 100000))
+            st.session_state["uuids_borrar"] = []
+
+        st.button("Borrar facturas", on_click=delete_invoice)       
+        st.button("Cancelar", on_click=cancel_delete)
 
     
     col1, col2 = st.columns(2)
@@ -177,8 +206,8 @@ def load_declaraciones():
 
 
 page_names_to_funcs = {
-    "Cargar facturas": load_invoices,
     "Ver facturas": show_invoices,
+    "Cargar facturas": load_invoices,
     "Cargar declaraciones": load_declaraciones,
     "Ver declaraciones": show_declaraciones,
 }

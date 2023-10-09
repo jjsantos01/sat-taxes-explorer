@@ -165,8 +165,10 @@ def get_data_cfdi_3_3(root, client_rfc=None):
 
     impuestos = root.find(namespace + "Impuestos")
     if impuestos is not None:
-        impuestoTotalTraslado = float(impuestos.attrib.get("TotalImpuestosTrasladados", 0))
-        impuestoTotalRetenido = float(impuestos.attrib.get("TotalImpuestosRetenidos", 0))
+        impuestoTotalTraslado = float(impuestos.attrib.get("TotalImpuestosTrasladados",
+                                                            0))
+        impuestoTotalRetenido = float(impuestos.attrib.get("TotalImpuestosRetenidos",
+                                                            0))
 
         retenciones = impuestos.find(namespace + "Retenciones")
         if retenciones is not None:
@@ -336,5 +338,6 @@ def export_data_to_sqlite(data_list, output_file):
 
 def table_exists(conn, table_name):
     c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+               (table_name,))
     return c.fetchone() is not None
