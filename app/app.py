@@ -55,6 +55,9 @@ def show_invoices():
     # Set the title and page layout
     st.title("Facturas")
 
+    # load invoices
+    load_invoices()
+
     # Connect to the SQLite database and fetch the data
     data, columns = fetch_cfdi_from_sqlite(DATABASE_FILE)
     df = pd.DataFrame(data, columns=columns)
@@ -117,7 +120,7 @@ def show_invoices():
         st.button("Cancelar", on_click=cancel_delete)
 
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.header("ISR")
         st.write(f"""Ingresos del periodo: {ingresos_totales:.2f}""")
@@ -127,19 +130,18 @@ def show_invoices():
         st.header("IVA")
         st.write(f"""IVA retenido: {iva_retenido:.2f}""")
         st.write(f"""IVA trasladado en compras: {iva_trasladado:.2f}""")
-
-    st.divider()
-    st.header("Datos declaracion anterior")
-    previous_declaration = fetch_previous_declaration(
-        DATABASE_FILE,
-        int(selected_year),
-        MONTHS_DICT[f"{int(selected_month)-1:02d}"]
-        )
-    if previous_declaration[0]:
-        for k, v in zip(previous_declaration[1], previous_declaration[0]):
-            st.write(f"{k}: {v}")
-    else:
-        st.info("No hay datos de declaracion anterior")
+    with col3:
+        st.header("Anterior")
+        previous_declaration = fetch_previous_declaration(
+            DATABASE_FILE,
+            int(selected_year),
+            MONTHS_DICT[f"{int(selected_month)-1:02d}"]
+            )
+        if previous_declaration[0]:
+            for k, v in zip(previous_declaration[1], previous_declaration[0]):
+                st.write(f"{k}: {v}")
+        else:
+            st.info("No hay datos de declaracion anterior")
 
 def load_invoices():
     uploaded_files = st.file_uploader("Subir facturas", type="xml",
@@ -170,6 +172,9 @@ def fetch_declaraciones_from_sqlite(database_file):
 def show_declaraciones():
     # Set the title and page layout
     st.title("Declaraciones Mensuales")
+
+    # load declaraciones
+    load_declaraciones()
 
     # Connect to the SQLite database and fetch the data
     data, columns = fetch_declaraciones_from_sqlite(DATABASE_FILE)
@@ -206,11 +211,9 @@ def load_declaraciones():
 
 
 page_names_to_funcs = {
-    "Ver facturas": show_invoices,
-    "Cargar facturas": load_invoices,
-    "Cargar declaraciones": load_declaraciones,
-    "Ver declaraciones": show_declaraciones,
-}
+    "Facturas": show_invoices,
+    "Declaraciones": show_declaraciones,
+    }
 
 page_name = st.sidebar.selectbox("Escoge tarea", page_names_to_funcs.keys())
 page_names_to_funcs[page_name]()
