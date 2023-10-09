@@ -1,55 +1,18 @@
 from io import StringIO
-import sqlite3
 import random
 import streamlit as st
 import pandas as pd
-from parse_cfdi_facturas import get_data_cfdi, export_data_to_sqlite,\
+from parse_cfdi_facturas import get_data_cfdi,\
 CLIENT_RFC,DATABASE_FILE
-from data_ops import delete_selected_rows_from_db
-from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text,\
-      save_data_to_sqlite
+from data_ops import delete_selected_rows_from_db, fetch_cfdi_from_sqlite,\
+fetch_previous_declaration, fetch_declaraciones_from_sqlite,\
+export_data_to_sqlite, save_declaracion_to_sqlite
+from parse_declaraciones_pdf import extract_text_from_pdf, extract_data_from_text
 
 MONTHS_DICT = {"01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
                "05": "Mayo", "06": "Junio", "07": "Julio", "08": "Agosto",
                "09": "Septiembre", "10": "Octubre", "11": "Noviembre",
                "12": "Diciembre"}
-
-def fetch_cfdi_from_sqlite(database_file):
-    conn = sqlite3.connect(database_file)
-    c = conn.cursor()
-
-    # Fetch all rows from the table
-    c.execute("SELECT * FROM cfdi")
-    rows = c.fetchall()
-
-    # Get the column names
-    column_names = [description[0] for description in c.description]
-
-    # Close the connection
-    conn.close()
-
-    return rows, column_names
-
-def fetch_previous_declaration(database_file, ejercicio, periodo):
-    conn = sqlite3.connect(database_file)
-    c = conn.cursor()
-
-    # Fetch all rows from the table
-    c.execute("""
-        SELECT periodo,
-               pagos_provisionales_periodos_anteriores,
-               impuesto_valor_agregado_favor
-        FROM declaraciones_mensuales
-        WHERE ejercicio = ? AND periodo = ?""", (ejercicio, periodo))
-    rows = c.fetchone()
-
-    # Get the column names
-    column_names = [description[0] for description in c.description]
-
-    # Close the connection
-    conn.close()
-
-    return rows, column_names
 
 def show_invoices():
     # Set the title and page layout
@@ -160,15 +123,6 @@ def load_invoices():
         else:
             st.info("No se guardaron registros nuevos")
 
-def fetch_declaraciones_from_sqlite(database_file):
-    conn = sqlite3.connect(database_file)
-    c = conn.cursor()
-    c.execute("SELECT * FROM declaraciones_mensuales ORDER BY fecha_presentacion ASC")
-    rows = c.fetchall()
-    column_names = [description[0] for description in c.description]
-    conn.close()
-    return rows, column_names
-
 def show_declaraciones():
     # Set the title and page layout
     st.title("Declaraciones Mensuales")
@@ -201,14 +155,13 @@ def load_declaraciones():
             extracted_text = extract_text_from_pdf(uploaded_file)
             extracted_data = extract_data_from_text(extracted_text)
             if extracted_data:
-                saved = save_data_to_sqlite(extracted_data, DATABASE_FILE)
+                saved = save_declaracion_to_sqlite(extracted_data, DATABASE_FILE)
                 if saved:
                     st.success(f"Datos de {uploaded_file.name} guardados exitosamente")
                 else:
                     st.info(f"{uploaded_file.name} ya estaba guardado")
             else:
                 st.warning(f"No se pudieron extraer datos de {uploaded_file.name}") 
-
 
 page_names_to_funcs = {
     "Facturas": show_invoices,

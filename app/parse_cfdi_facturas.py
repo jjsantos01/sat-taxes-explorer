@@ -1,6 +1,5 @@
 import csv
 import os
-import sqlite3
 import xml.etree.ElementTree as ET
 from dotenv import load_dotenv
 
@@ -271,73 +270,3 @@ def export_data_to_excel(data_list, output_file):
 
     print("Data exported to Excel successfully!")
 
-def export_data_to_sqlite(data_list, output_file):
-    # Check if the SQLite database file exists
-    database_exists = os.path.isfile(output_file)
-
-    # Connect to the SQLite database
-    conn = sqlite3.connect(output_file)
-    c = conn.cursor()
-
-    # If the database doesn't exist, create the table
-    if not database_exists or not table_exists(conn, 'cfdi'):
-        # Create the table with appropriate columns
-        c.execute('''
-            CREATE TABLE cfdi (
-                uuid TEXT PRIMARY KEY,
-                fecha TEXT,
-                tipoComprobante TEXT,
-                subtotal REAL,
-                total REAL,
-                emisorRFC TEXT,
-                emisorNombre TEXT,
-                receptorRFC TEXT,
-                receptorNombre TEXT,
-                impuestoTotalTraslado REAL,
-                impuestoTotalRetenido REAL,
-                isrRetenido REAL,
-                ivaRetenido REAL,
-                ivaTrasladado REAL,
-                tipo TEXT,
-                version TEXT
-            )
-        ''')
-    exported_data = 0
-    # Insert the data into the table if the UUID doesn't already exist
-    for data in data_list:
-        uuid = data["uuid"]
-        c.execute("SELECT uuid FROM cfdi WHERE uuid = ?", (uuid,))
-        existing_uuid = c.fetchone()
-
-        if existing_uuid is None:
-            c.execute('''
-                INSERT INTO cfdi (
-                    uuid, fecha, tipoComprobante, subtotal, total, emisorRFC,
-                    emisorNombre, receptorRFC, receptorNombre,
-                    impuestoTotalTraslado, impuestoTotalRetenido, isrRetenido,
-                    ivaRetenido, ivaTrasladado, tipo, version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                uuid, data['fecha'], data['tipoComprobante'], data['subtotal'],
-                data['total'], data['emisorRFC'], data['emisorNombre'],
-                data['receptorRFC'], data['receptorNombre'],
-                data['impuestoTotalTraslado'], data['impuestoTotalRetenido'],
-                data['isrRetenido'], data['ivaRetenido'], data['ivaTrasladado'],
-                data['tipo'], data['version']
-            ))
-            exported_data += 1
-        else:
-            print(f"Skipping duplicate UUID: {uuid}")
-
-    # Commit the changes and close the connection
-    conn.commit()
-    conn.close()
-
-    print(f"{exported_data} records exported successfully!")
-    return exported_data
-
-def table_exists(conn, table_name):
-    c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-               (table_name,))
-    return c.fetchone() is not None
