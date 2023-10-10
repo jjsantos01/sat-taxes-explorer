@@ -1,5 +1,8 @@
+import datetime
 from io import StringIO
 import random
+import re
+import uuid
 import streamlit as st
 import pandas as pd
 from parse_cfdi_facturas import get_data_cfdi,\
@@ -18,7 +21,7 @@ MONTHS_DICT = {"01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
 def show_invoices():
     # Set the title and page layout
     st.title("Facturas")
-
+    
     # load invoices
     load_invoices()
 
@@ -106,6 +109,9 @@ def show_invoices():
         else:
             st.info("No hay datos de declaracion anterior")
 
+    if st.checkbox("Agregar factura manualmente"):
+        new_invoice_form()
+
 def load_invoices():
     uploaded_files = st.file_uploader("Subir facturas", type="xml",
                                        accept_multiple_files=True)
@@ -122,6 +128,7 @@ def load_invoices():
             st.success(f"{exported} registros guardados exitosamente")
         else:
             st.info("No se guardaron registros nuevos")
+        uploaded_files = None
 
 def show_declaraciones():
     # Set the title and page layout
@@ -190,6 +197,41 @@ def load_declaraciones():
             else:
                 st.warning(f"No se pudieron extraer datos de {uploaded_file.name}") 
 
+def new_invoice_form():
+    # Create a form for user input
+    cfdi_data = {}
+    uuid_key = str(uuid.uuid4())
+    with st.form(key="invoice_form"):
+        cfdi_data['uuid'] = st.text_input('UUID', uuid_key)
+        cfdi_data['fecha'] = st.text_input('Fecha',
+                                            value=datetime.date.today().strftime("%Y-%m-%d"))
+        cfdi_data['tipoComprobante'] = st.selectbox('Tipo de comprobante',
+                                                    ['E', 'I', 'P'], index=0)
+        cfdi_data['subtotal'] = st.number_input('Subtotal')
+        cfdi_data['total'] = st.number_input('Total')
+        cfdi_data['ivaTrasladado'] = st.number_input('IVA trasladado')
+        cfdi_data['isrRetenido'] = st.number_input('ISR retenido')
+        cfdi_data['ivaRetenido'] = st.number_input('IVA retenido')
+        cfdi_data['impuestoTotalTraslado'] = st.number_input('Impuesto total traslado')
+        cfdi_data['impuestoTotalRetenido'] = st.number_input('Impuesto total retenido')
+        cfdi_data['emisorRFC'] = st.text_input('RFC emisor')
+        cfdi_data['emisorNombre'] = st.text_input('Nombre emisor')
+        cfdi_data['receptorRFC'] = st.text_input('RFC receptor')
+        cfdi_data['receptorNombre'] = st.text_input('Nombre receptor')
+        cfdi_data['tipo'] = st.selectbox('Tipo', ['gasto', 'ingreso'], index=0)
+        cfdi_data['version'] = "manual"
+        
+        if not re.search(r"^\d{4}-\d{2}-\d{2}$", cfdi_data["fecha"]):
+            st.error("Fecha debe tener formato YYYY-MM-DD")
+        else:
+            submitted = st.form_submit_button('Guardar')
+        
+        if submitted:
+            # Now cfdi_data dictionary contains all the input values
+            save_cfdi_to_sqlite([cfdi_data], DATABASE_FILE)
+            st.success("Factura guardada exitosamente")
+            st.experimental_rerun()
+       
 page_names_to_funcs = {
     "Facturas": show_invoices,
     "Declaraciones": show_declaraciones,
