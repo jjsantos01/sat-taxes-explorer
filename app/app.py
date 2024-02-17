@@ -98,14 +98,22 @@ def show_invoices():
         st.write(f"""IVA trasladado en compras: {iva_trasladado:.2f}""")
     with col3:
         st.header("Anterior")
+        if int(selected_month) > 1:
+            previous_month = MONTHS_DICT[f"{int(selected_month)-1:02d}"]
+            previous_year = int(selected_year)
+        else:
+            previous_month = MONTHS_DICT["12"]
+            previous_year = int(selected_year) - 1
+
         previous_declaration = fetch_previous_declaration(
             DATABASE_FILE,
-            int(selected_year),
-            MONTHS_DICT[f"{int(selected_month)-1:02d}"]
+            previous_year,
+            previous_month
             )
         if previous_declaration[0]:
             for k, v in zip(previous_declaration[1], previous_declaration[0]):
-                st.write(f"{k}: {v}")
+                if not (k.startswith("pagos_provisionales") and (int(selected_month) == 1)):
+                    st.write(f"{k}: {v}")
         else:
             st.info("No hay datos de declaracion anterior")
 
